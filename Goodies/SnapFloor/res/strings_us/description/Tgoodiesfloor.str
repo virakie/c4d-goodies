@@ -1,0 +1,6 @@
+STRINGTABLE Tgoodiesfloor
+{
+	Tgoodiesfloor "Floor";
+
+	FLOOR_HEIGHT "Floor Height";
+}
