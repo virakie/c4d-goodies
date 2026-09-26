@@ -1,5 +1,4 @@
 # Goodies
-![Goodies](img/cover.png)
 
 Small Python plugins for Cinema 4D 2026. One click does the job; Shift/Ctrl for variants.
 
