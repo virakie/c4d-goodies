@@ -1,9 +1,9 @@
-﻿# Goodies
+# Goodies
 ![Goodies](img/cover.png)
 
 A small collection of Python plugins for Maxon Cinema 4D. Each one does one job, looks and feels like part of Cinema 4D, and stays out of your way: one click for the main action, Shift or Ctrl for its variant, messages in the status bar instead of popups, and one undo step for everything it changes.
 
-Latest version: **1.0.0** _(27.09.2026)_ Â· [Change log](CHANGELOG.md)
+Latest version: **1.0.0** _(27.09.2026)_ · [Change log](CHANGELOG.md)
 
 ## How to use
 
@@ -23,7 +23,7 @@ Download this [repo](https://github.com/virakie/goodies/archive/refs/heads/main.
 The quickest way to find it: in Cinema 4D open **Preferences** (Ctrl+E / Cmd+E), press **Open Preferences Folder...** and go into `plugins` (create it if it's missing). Then restart Cinema 4D.
 
 ### Using the tools
-Everything is under **Extensions â†’ Goodies**. Click the dotted line at the top of that menu to tear it off into a palette you can dock anywhere.
+Everything is under **Extensions → Goodies**. Click the dotted line at the top of that menu to tear it off into a palette you can dock anywhere.
 
 Hold **Shift** or **Ctrl** while clicking a tool for its variant (listed below). Every tool can be given a shortcut in **Customize Commands** (Shift+F12). Some suggestions are listed with the tools.
 
@@ -57,7 +57,7 @@ Fast on heavy scenes: it only redraws the active view instead of re-evaluating t
 ### ![Render Regions](img/icons/RenderRegion.png) Render Regions
 **Panel:** Region On, saved regions, and Fit to Selection.
 **Snip Render Region** (give it a shortcut, e.g. Alt+R): drag a box in the viewport and that becomes the render region. Click without dragging to turn the region off, Esc to cancel.
-- **Saved regions:** name them (Hero, Closeupâ€¦) and pick one to apply it again. They're stored in the scene as fractions of the frame, so they survive a resolution change.
+- **Saved regions:** name them (Hero, Closeup…) and pick one to apply it again. They're stored in the scene as fractions of the frame, so they survive a resolution change.
 - **Fit to Selection:** fits the region around the selected objects on **This Frame**, or around everywhere they go over the **Frame Range**, plus a border in pixels.
 - A **Render Region Frame** helper draws the region in the viewport. It never renders.
 
@@ -70,14 +70,14 @@ Uses Cinema 4D's own render region, which Redshift follows exactly. (Cinema 4D's
 
 ### ![Rename](img/icons/Renamer.png) Rename
 **Default:** A one-line field pops up at the mouse with the selected object's name, Blender F2 style. Type, Enter to rename, Esc or click away to cancel. Suggested shortcut: a single key like **Q**.
-- `Rock`: one object gets that name. Several become Rock_01, Rock_02â€¦
+- `Rock`: one object gets that name. Several become Rock_01, Rock_02…
 - `Leg_##`: numbered in Object Manager order (`###` = three digits).
 - `*_L`: `*` is the current name, so this adds a suffix (`Hero_*` adds a prefix).
 - `old>new`: replaces text in every name (`old>` deletes it).
 
 ![Rename popup](img/screens/rename_popup.png)
 
-The first â–¾ menu has recent names; the second has **Clean Up Names** and **Auto-number Duplicates**. With auto-numbering on, a copy that Cinema 4D would call "Cube.1" becomes the next free "Cube_01" instead (big imports are left alone).
+The first ▾ menu has recent names; the second has **Clean Up Names** and **Auto-number Duplicates**. With auto-numbering on, a copy that Cinema 4D would call "Cube.1" becomes the next free "Cube_01" instead (big imports are left alone).
 
 ### ![Icon Color](img/icons/IconColor.png) Icon Color
 **Default:** Opens Cinema 4D's colour picker and tints the Object Manager icon of every selected object.
