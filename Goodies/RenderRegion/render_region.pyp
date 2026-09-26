@@ -360,7 +360,13 @@ def _poly_boxes(op):
 
 
 def project_box(rbd, objs):
-    """Screen box of the objects' bounding boxes in the render view, as uv."""
+    """Screen box of the objects' bounding boxes in the render view, as uv.
+    Projects through the camera's current matrix (world -> camera, then CS):
+    rbd.WS uses the view's last *drawn* camera, which is stale after the
+    camera moves or animates without a redraw (e.g. during Frame Range)."""
+    doc = objs[0].GetDocument()
+    cam = rbd.GetSceneCamera(doc) or rbd.GetEditorCamera()
+    to_cam = ~cam.GetMg()
     lo_u = lo_v = 1e9
     hi_u = hi_v = -1e9
     found = False
@@ -370,7 +376,7 @@ def project_box(rbd, objs):
                 for sy in (-1, 1):
                     for sz in (-1, 1):
                         p = mg * (mp + c4d.Vector(rad.x * sx, rad.y * sy, rad.z * sz))
-                        s = rbd.WS(p)
+                        s = rbd.CS(to_cam * p, False)
                         if s.z <= 0:
                             continue                  # behind the camera
                         u, v = view_to_uv(rbd, s.x, s.y)

@@ -63,6 +63,9 @@ Fast on heavy scenes: it only redraws the active view instead of re-evaluating t
 
 Uses Cinema 4D's own render region, which Redshift follows exactly. (Cinema 4D's region can't be keyframed, so Frame Range makes one region that covers the whole move.)
 
+![Render region in the viewport](img/screens/render_region_viewport.png)
+![Render Regions panel](img/screens/render_regions_panel.png)
+
 ## Organizing
 
 ### ![Rename](img/icons/Renamer.png) Rename
@@ -71,6 +74,8 @@ Uses Cinema 4D's own render region, which Redshift follows exactly. (Cinema 4D's
 - `Leg_##`: numbered in Object Manager order (`###` = three digits).
 - `*_L`: `*` is the current name, so this adds a suffix (`Hero_*` adds a prefix).
 - `old>new`: replaces text in every name (`old>` deletes it).
+
+![Rename popup](img/screens/rename_popup.png)
 
 The first ▾ menu has recent names; the second has **Clean Up Names** and **Auto-number Duplicates**. With auto-numbering on, a copy that Cinema 4D would call "Cube.1" becomes the next free "Cube_01" instead (big imports are left alone).
 
@@ -96,6 +101,9 @@ Follows the scene's render engine: Redshift, Octane or Standard. Redshift materi
 
 Thumbnails are made in the background with [ffmpeg](https://ffmpeg.org/) if it's installed and on your PATH. Without it the panel still works, just without thumbnails.
 
+![HDRI panel](img/screens/hdri_panel.png)
+_HDRIs shown: [Poly Haven](https://polyhaven.com/hdris) (CC0)._
+
 ### ![PuzzleMatte](img/icons/PuzzleMatte.png) PuzzleMatte _(Redshift)_
 **Panel:** Drag objects in from the Object Manager (or **Add Selected**), then **Build**.
 - **Per object** (default): one AOV per object, a plain white matte, e.g. `MATTE_Chair`.
@@ -103,6 +111,8 @@ Thumbnails are made in the background with [ffmpeg](https://ffmpeg.org/) if it's
 - **Output:** Direct (each AOV writes its own file), Multi-Pass, or both.
 
 Build gives each object an RS Object tag with its own Object ID and only ever replaces its own AOVs. A group becomes one matte. A child with its own Object ID override would punch a hole in its parent's matte; those rows are flagged and **Fix Conflicts** sorts them out. **Clear + Build** removes everything PuzzleMatte made.
+
+![PuzzleMatte panel](img/screens/puzzlematte_panel.png)
 
 ### ![Localize Textures](img/icons/Localize.png) Localize Textures
 **Default:** Copies every texture and file the scene uses into a `tex` folder next to the .c4d, relinks the scene to it, and saves. Ready to zip and hand over.
