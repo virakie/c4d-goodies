@@ -1,7 +1,5 @@
 # Goodies
 
-Small Python plugins for Cinema 4D 2026. One click does the job; Shift/Ctrl for variants.
-
 ## Install
 [Download](https://github.com/virakie/c4d-goodies/archive/refs/heads/main.zip), put the **Goodies** folder in your C4D `plugins` folder (Preferences → Open Preferences Folder), restart. Tools are under **Extensions → Goodies**.
 
