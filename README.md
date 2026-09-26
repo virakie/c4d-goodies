@@ -12,7 +12,7 @@ Axis to the centre of the geometry. **Shift:** bottom centre.
 Drops the selection onto the floor. **Shift:** live tag that keeps it there.
 
 ### ![](img/icons/Solo.png) Solo
-Solos the selection in viewport and render. Click again to restore.
+Solos the selection in viewport and render. Click again to restore. Can also be used with lighting workflow for solo-ing lights.
 
 ### ![](img/icons/CameraToggle.png) Camera Toggle
 Flips between the scene camera and the editor camera.
