@@ -22,6 +22,9 @@ Drag a render region in the viewport, save named regions, or fit one to the sele
 
 ![](img/screens/render_region_viewport.png)
 
+### ![](img/icons/Eyeballer.png) Eyeballer _(Windows)_
+Live look-dev views of the viewport or Redshift RenderView (brightness, light & shadow, exposure zones, saturation…) with DaVinci-style scopes. Needs Python 3 with `pip install numpy pillow pywin32`.
+
 ### ![](img/icons/Renamer.png) Rename
 Blender-style rename popup. `Leg_##` numbers, `*_L` adds a suffix, `old>new` replaces.
 
@@ -45,6 +48,9 @@ Drag objects in, Build: one matte AOV per object, or RGB packs.
 
 ### ![](img/icons/Localize.png) Localize Textures
 Copies all textures next to the scene and relinks them.
+
+### ![](img/icons/Timelapse.png) Timelapse _(Windows)_
+Records your working session as a timelapse, skipping idle time. Needs [ffmpeg](https://ffmpeg.org/).
 
 ## License
 [MIT](LICENSE)
