@@ -9,6 +9,27 @@ Built with the help of LLMs. I test everything in my own work, but if you avoid 
 
 ## Tools
 
+### ![](img/icons/Library.png) Library _(Redshift)_
+Asset browser for your own folders: PBR materials, HDRIs, imperfections, light maps, gobos, bokeh, IES and LUTs (Redshift's own included). Click to apply, drag materials onto objects, arrow keys to flip through looks. Add folders with **+ Folder**. Thumbnails need [ffmpeg](https://ffmpeg.org/).
+
+![](img/screens/library_panel.png)
+
+---
+
+### ![](img/icons/PuzzleMatte.png) PuzzleMatte _(Redshift)_
+Drag objects in, Build: one matte AOV per object, or RGB packs.
+
+![](img/screens/puzzlematte_panel.png)
+
+---
+
+### ![](img/icons/Renamer.png) Rename
+Blender-style rename popup. `Leg_##` numbers, `*_L` adds a suffix, `old>new` replaces.
+
+![](img/screens/rename_popup.png)
+
+---
+
 ### ![](img/icons/Axis.png) Axis
 Axis to the centre of the geometry. **Shift:** bottom centre.
 
@@ -41,13 +62,6 @@ Live look-dev views of the viewport or Redshift RenderView (brightness, light & 
 
 ---
 
-### ![](img/icons/Renamer.png) Rename
-Blender-style rename popup. `Leg_##` numbers, `*_L` adds a suffix, `old>new` replaces.
-
-![](img/screens/rename_popup.png)
-
----
-
 ### ![](img/icons/IconColor.png) Icon Color
 Tints the selected objects' icons. **Shift:** display colour too. **Ctrl:** reset.
 
@@ -55,20 +69,6 @@ Tints the selected objects' icons. **Shift:** display colour too. **Ctrl:** rese
 
 ### ![](img/icons/ImageAsPlane.png) Image As Plane
 Images to planes with matching materials (Redshift, Octane or Standard).
-
----
-
-### ![](img/icons/Library.png) Library _(Redshift)_
-Asset browser for your own folders: PBR materials, HDRIs, imperfections, light maps, gobos, bokeh, IES and LUTs (Redshift's own included). Click to apply, drag materials onto objects, arrow keys to flip through looks. Add folders with **+ Folder**. Thumbnails need [ffmpeg](https://ffmpeg.org/).
-
-![](img/screens/library_panel.png)
-
----
-
-### ![](img/icons/PuzzleMatte.png) PuzzleMatte _(Redshift)_
-Drag objects in, Build: one matte AOV per object, or RGB packs.
-
-![](img/screens/puzzlematte_panel.png)
 
 ---
 
