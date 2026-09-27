@@ -23,6 +23,13 @@ Drag objects in, Build: one matte AOV per object, or RGB packs.
 
 ---
 
+### ![](img/icons/RenderRegion.png) Render Regions
+Drag a render region in the viewport, save named regions, or fit one to the selection.
+
+![](img/screens/render_region_viewport.png)
+
+---
+
 ### ![](img/icons/Renamer.png) Rename
 Blender-style rename popup. `Leg_##` numbers, `*_L` adds a suffix, `old>new` replaces.
 
@@ -47,13 +54,6 @@ Solos the selection in viewport and render. Click again to restore. Can also be 
 
 ### ![](img/icons/CameraToggle.png) Camera Toggle
 Flips between the scene camera and the editor camera.
-
----
-
-### ![](img/icons/RenderRegion.png) Render Regions
-Drag a render region in the viewport, save named regions, or fit one to the selection.
-
-![](img/screens/render_region_viewport.png)
 
 ---
 
