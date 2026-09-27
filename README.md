@@ -16,6 +16,13 @@ Asset browser for your own folders: PBR materials, HDRIs, imperfections, light m
 
 ---
 
+### ![](img/icons/Ease.png) Ease
+A curve editor for keyframe easing. Shape a curve (Bezier, multi-point Custom, Bounce, Elastic, Steps, or AE-style speed graph), then **Apply** to the selected keys. Copy an ease from keys, **Paste Reversed** to mirror it. Library with your own presets in profiles you can import and export.
+
+![](img/screens/ease_panel.png)
+
+---
+
 ### ![](img/icons/PuzzleMatte.png) PuzzleMatte _(Redshift)_
 Drag objects in, Build: one matte AOV per object, or RGB packs.
 
