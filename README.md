@@ -1,5 +1,9 @@
 # Goodies
 
+I hate paywalls, especially subscriptions. So I made a few quality-of-life plugins for my own work, and I'm sharing them here in case they help someone else :) Feel free to dig through the source, fork it, and make it your own.
+
+Built with the help of LLMs. I test everything in my own work, but if you avoid AI-assisted tools, these probably aren't for you and I completely understand.
+
 ## Install
 [Download](https://github.com/virakie/c4d-goodies/archive/refs/heads/main.zip), put the **Goodies** folder in your C4D `plugins` folder (Preferences → Open Preferences Folder), restart. Tools are under **Extensions → Goodies**.
 
