@@ -215,6 +215,10 @@ class Panel(gui.GeDialog):
     # ---- layout
     def CreateLayout(self):
         self.SetTitle("Eyeballer")
+        # Docking/undocking re-runs CreateLayout on this same instance: forget what the old
+        # widgets showed, or sync() thinks the fresh ones are already filled in.
+        self.names, self.shown = [], {}
+        self.scope_count, self.last_size, self.adj_open = -1, None, False
         self.MenuFlushAll()
         self.MenuSubBegin("Edit")
         self.MenuAddString(M_UNDO, "Undo  (Ctrl+Z)")
@@ -368,8 +372,13 @@ class Panel(gui.GeDialog):
         if info["state"] == STATE_OK and not info["idle"] and info["fps"] < 14: status += "   |   %.0f fps" % info["fps"]
         if info.get("msg"): status += "   |   " + info["msg"]
         if changed("status", status): self.SetString(TX_STATUS, status)
-        if changed("scopes", (info.get("scope_count"), tuple(info.get("slots", [])))) and info.get("scope_count") != self.scope_count:
-            self.build_scopes(info.get("scope_count", 2), info.get("slots", []))
+        # the service owns the scope count: rebuild whenever the panel shows something else
+        # (after a re-layout InitValues guesses 2, which may not be what the service has)
+        want = info.get("scope_count", 2)
+        loc = _local.get("scope_count")
+        if loc and time.time() - loc[1] < 1.5: want = loc[0]     # just changed here; the service hasn't caught up
+        if want != self.scope_count:
+            self.build_scopes(want, info.get("slots", []))
         p = info.get("params", {})
         for mid, fps in ((M_FPS10, 10), (M_FPS20, 20), (M_FPS30, 30)): self.MenuInitString(mid, True, int(p.get("max_fps", 30)) == fps)
         for i, s in enumerate(SOURCES): self.MenuInitString(M_SRC0 + i, True, info["source"] == s)

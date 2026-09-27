@@ -36,10 +36,10 @@ Tints the selected objects' icons. **Shift:** display colour too. **Ctrl:** rese
 ### ![](img/icons/ImageAsPlane.png) Image As Plane
 Images to planes with matching materials (Redshift, Octane or Standard).
 
-### ![](img/icons/HDRI.png) HDRI _(Redshift)_
-Thumbnail browser for your HDRI folders. Click to light the scene. Thumbnails need [ffmpeg](https://ffmpeg.org/).
+### ![](img/icons/Library.png) Library _(Redshift)_
+Asset browser for your own folders: PBR materials, HDRIs, imperfections, light maps, gobos, bokeh, IES and LUTs (Redshift's own included). Click to apply, drag materials onto objects, arrow keys to flip through looks. Add folders with **+ Folder**. Thumbnails need [ffmpeg](https://ffmpeg.org/).
 
-![](img/screens/hdri_panel.png)
+![](img/screens/library_panel.png)
 
 ### ![](img/icons/PuzzleMatte.png) PuzzleMatte _(Redshift)_
 Drag objects in, Build: one matte AOV per object, or RGB packs.
