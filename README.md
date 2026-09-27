@@ -1,4 +1,4 @@
-# Goodies
+# C4D Goodies
 
 I hate paywalls, especially subscriptions. So I made a few quality-of-life plugins for my own work, and I'm sharing them here in case they help someone else :) Feel free to dig through the source, fork it, and make it your own.
 
