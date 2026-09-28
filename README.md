@@ -12,7 +12,9 @@ Built with the help of LLMs. I test everything in my own work, but if you avoid 
 ### ![](img/icons/Library.png) Library _(Redshift)_
 Asset browser for your own folders: PBR materials, HDRIs, imperfections, light maps, gobos, bokeh, IES and LUTs (Redshift's own included). Click to apply, drag materials onto objects, arrow keys to flip through looks. Add folders with **+ Folder**. Thumbnails need [ffmpeg](https://ffmpeg.org/).
 
-![](img/screens/library_panel.png)
+No assets are included: Library browses folders you already own. (The demo uses a paid HDRI pack from the author's own library.)
+
+[![Library demo](img/screens/library_demo.webp)](img/screens/library_demo.mp4)
 
 ---
 
