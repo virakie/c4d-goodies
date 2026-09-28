@@ -14,7 +14,7 @@ Asset browser for your own folders: PBR materials, HDRIs, imperfections, light m
 
 No assets are included: Library browses folders you already own. (The demo uses a paid HDRI pack from the author's own library.)
 
-[![Library demo](img/screens/library_demo.webp)](img/screens/library_demo.mp4)
+https://github.com/user-attachments/assets/c69558ff-a72f-41e8-b965-dd5750cdcdcf
 
 ---
 
