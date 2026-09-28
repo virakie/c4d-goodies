@@ -28,7 +28,9 @@ A curve editor for keyframe easing, you know the deal lol.
 ### ![](img/icons/PuzzleMatte.png) PuzzleMatte _(Redshift)_
 Drag objects in, Build: one matte AOV per object, or RGB packs.
 
-![](img/screens/puzzlematte_panel.png)
+
+https://github.com/user-attachments/assets/2c26a72c-e96e-4404-8ba1-a0890b0e31f8
+
 
 ---
 
