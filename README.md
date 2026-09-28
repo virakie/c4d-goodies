@@ -44,7 +44,7 @@ Drag a render region in the viewport, save named regions, or fit one to the sele
 ### ![](img/icons/Renamer.png) Rename
 Blender-style rename popup. `Leg_##` numbers, `*_L` adds a suffix, `old>new` replaces.
 
-![](img/screens/rename_popup.png)
+![](img/screens/rename_demo.gif)
 
 ---
 
