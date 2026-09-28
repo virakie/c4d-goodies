@@ -1,3 +1,5 @@
+
+https://github.com/user-attachments/assets/4dac5d5d-c4f4-4ed1-8ef8-1cd6c9bb7e72
 # C4D Goodies
 
 I hate paywalls, especially subscriptions. So I made a few quality-of-life plugins for my own work, and I'm sharing them here in case they help someone else :) Feel free to dig through the source, fork it, and make it your own.
@@ -48,6 +50,13 @@ Blender-style rename popup. `Name_##` numbers, `*_suffix` adds a suffix, `old>ne
 
 ---
 
+### ![](img/icons/Eyeballer.png) Eyeballer _(Windows)_
+Live look-dev views of the viewport or Redshift RenderView (brightness, light & shadow, exposure zones, saturation…) with DaVinci-style scopes. Needs Python 3 with `pip install numpy pillow pywin32`. Good if you don't trust your eyes.
+
+https://github.com/user-attachments/assets/23fb22d4-fa0d-4fe6-a2d7-0b1ebfffed84
+
+---
+
 ### ![](img/icons/Axis.png) Axis
 Axis to the centre of the geometry. **Shift:** bottom centre.
 
@@ -65,11 +74,6 @@ Solos the selection in viewport and render. Click again to restore. Can also be 
 
 ### ![](img/icons/CameraToggle.png) Camera Toggle
 Flips between the scene camera and the editor camera.
-
----
-
-### ![](img/icons/Eyeballer.png) Eyeballer _(Windows)_
-Live look-dev views of the viewport or Redshift RenderView (brightness, light & shadow, exposure zones, saturation…) with DaVinci-style scopes. Needs Python 3 with `pip install numpy pillow pywin32`.
 
 ---
 
