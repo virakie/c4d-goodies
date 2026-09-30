@@ -36,7 +36,10 @@ STATE_OK, STATE_NO_VIEWPORT, STATE_NO_RV, STATE_NO_AREA, STATE_PAUSED, STATE_NO_
 DEFAULTS = {"mode": 0, "source": "auto", "area": None, "trim": {}, "dock": {}, "ref": None, "pins": [],
             "scope_count": 2, "slots": ["Waveform", "Vectorscope", "RGB Parade", "Histogram"],
             "notan_lo": 0.18, "notan_hi": 0.55, "accent": 0.35, "exposure": 0.0, "max_fps": 30,
-            "scope_gain": 1.0, "vec_zoom": 1.0}
+            "scope_gain": 1.0, "vec_zoom": 1.0, "balance": 1, "balance_preset": 0,
+            "ui": {"height_idx": 1, "adj_open": False}}      # panel-only layout, kept here so it survives restarts
+BALANCE_VIEWS = ("Brightness", "Light & Shadow")                  # views that show the 60/30/10 meter
+TONES = [("Shadow", (40, 40, 42)), ("Mid", (118, 118, 120)), ("Light", (228, 228, 230))]
 ZONES = [(0.02, "crushed", (115, 0, 153)), (0.10, "deep shadow", (0, 25, 153)), (0.20, "shadow", (0, 115, 140)),
          (0.40, "low mid", (77, 89, 77)), (0.50, "mid grey", (25, 179, 25)), (0.62, "high mid", (158, 158, 158)),
          (0.75, "bright", (242, 230, 0)), (0.90, "hot", (255, 128, 0)), (0.98, "near clip", (242, 13, 13)),
@@ -112,6 +115,34 @@ class WindowGrabber:
             except Exception: pass
             self.key = None
 
+_dwm, _u32 = ctypes.windll.dwmapi, ctypes.windll.user32
+from ctypes import wintypes as _wt
+for _f in (_u32.GetAncestor, _u32.GetWindow): _f.argtypes, _f.restype = [_wt.HWND, ctypes.c_uint], _wt.HWND
+_dwm.DwmGetWindowAttribute.argtypes = [_wt.HWND, _wt.DWORD, ctypes.c_void_p, _wt.DWORD]
+class _RECT(ctypes.Structure): _fields_ = [("l", ctypes.c_long), ("t", ctypes.c_long), ("r", ctypes.c_long), ("b", ctypes.c_long)]
+
+def covered(hwnd, rect):
+    """Is any visible window above hwnd's top-level window overlapping rect (screen coords)?
+    Cinema 4D's own menus, tooltips and floating panels count. Other apps' layered windows don't: launchers
+    (Lertaro) and GPU overlays keep invisible layered windows on top that report as visible."""
+    x0, y0, x1, y1 = rect
+    pid = win32process.GetWindowThreadProcessId(hwnd)[1]
+    h = _u32.GetAncestor(hwnd, 2)                                  # GA_ROOT
+    for _ in range(400):
+        h = _u32.GetWindow(h, 3)                                   # GW_HWNDPREV = next window up the z-order
+        if not h: return False
+        if not win32gui.IsWindowVisible(h) or win32gui.IsIconic(h): continue
+        ex = win32gui.GetWindowLong(h, -20)                        # GWL_EXSTYLE
+        if ex & 0x80000 and win32process.GetWindowThreadProcessId(h)[1] != pid: continue   # WS_EX_LAYERED
+        cloaked = ctypes.c_int(0)
+        _dwm.DwmGetWindowAttribute(h, 14, ctypes.byref(cloaked), 4)
+        if cloaked.value: continue
+        r = _RECT()                                                # DWMWA_EXTENDED_FRAME_BOUNDS: no invisible borders
+        if _dwm.DwmGetWindowAttribute(h, 9, ctypes.byref(r), ctypes.sizeof(r)) != 0:
+            r.l, r.t, r.r, r.b = win32gui.GetWindowRect(h)
+        if r.r > r.l and r.b > r.t and r.l < x1 and r.r > x0 and r.t < y1 and r.b > y0: return True
+    return False
+
 class Capturer:
     """Grabs a window's pixels one frame ahead on a worker thread, so capture overlaps processing.
 
@@ -126,7 +157,9 @@ class Capturer:
         g = self.grabbers.setdefault(hwnd, [WindowGrabber(), bm.Grabber()])
         if screen_ok:
             _, _, w, h = win32gui.GetClientRect(hwnd); x, y = win32gui.ClientToScreen(hwnd, (0, 0))
-            if w > 0 and h > 0: return np.ascontiguousarray(g[1].grab(x, y, w, h))
+            # a menu, tooltip or floating panel over the window would be copied off the screen with it
+            if w > 0 and h > 0 and not covered(hwnd, (x, y, x + w, y + h)):
+                return np.ascontiguousarray(g[1].grab(x, y, w, h))
         return np.ascontiguousarray(g[0].grab(hwnd))
 
     def get(self, hwnd, screen_ok=True):
@@ -139,7 +172,57 @@ class Capturer:
         return img
 
 TOOLBAR_H = 60
+def _longest_run(mask):
+    best, start = (0, 0), None
+    for i, v in enumerate(np.append(mask, False)):
+        if v and start is None: start = i
+        elif not v and start is not None:
+            if i - start > best[1] - best[0]: best = (start, i)
+            start = None
+    return best
+
 def auto_trim_rv(full):
+    """The render sits in the RenderView's canvas, framed by one flat UI grey (51 here) on two sides.
+    That surround is a single exact value with no noise, so the render = the bounding box of everything
+    that is not exactly that grey, inside the canvas. Judging by colour alone fails when the render's own
+    background is dark grey too (a dark studio backdrop matched the UI and got cropped away).
+    -> (x0, y0, x1, y1) of the render, or None."""
+    h, w = full.shape[:2]
+    if h < 120 or w < 80: return None
+    edges = np.concatenate([full[:, 1:3].reshape(-1, 3), full[:, w - 3:w - 1].reshape(-1, 3)])        # surround + toolbar + render edges
+    vals, counts = np.unique(edges, axis=0, return_counts=True)
+    for g in [vals[i] for i in np.argsort(-counts)[:5]]:
+        if int(g.max()) - int(g.min()) > 2 or not 25 <= g.max() <= 90: continue
+        U = (full == g).all(axis=2)                                  # exactly the surround grey
+        side = U[:, 2] & U[:, w - 3] & U[:, 6] & U[:, w - 7]           # surround on both sides (the render is centred)
+        r0, r1 = _longest_run(side)
+        if r1 - r0 > h * 0.3:                                        # render narrower than the canvas: canvas = those rows
+            c0, c1 = r0, r1
+        else:                                                        # render wider: surround rows above and below it
+            full_rows = np.flatnonzero(U.mean(axis=1) > 0.98)
+            if len(full_rows) < 2 or full_rows[-1] - full_rows[0] < h * 0.3: continue
+            c0, c1 = int(full_rows[0]), int(full_rows[-1]) + 1
+        ys, xs = np.nonzero(~U[c0:c1])
+        if len(xs) < 100: continue
+        # the render is centred in the canvas, so mirror the extent seen on its most visible side: a render edge
+        # that happens to be exactly the surround grey would otherwise be cut off
+        cx, cy = w / 2, (c0 + c1) / 2
+        hw = max(cx - xs.min(), xs.max() + 1 - cx); hh = max(cy - (c0 + ys.min()), c0 + ys.max() + 1 - cy)
+        x0, x1 = max(0, int(round(cx - hw))), min(w, int(round(cx + hw)))
+        y0, y1 = max(c0, int(round(cy - hh))), min(c1, int(round(cy + hh)))
+        if (x1 - x0) >= 10 and (y1 - y0) >= 10 and (x1 - x0) * (y1 - y0) > w * h * 0.05:
+            sub = full[y0:y1:4, x0:x1:4].reshape(-1, 3)
+            v, n = np.unique(sub, axis=0, return_counts=True)
+            top = v[n.argmax()]
+            if n.max() > len(sub) * 0.9 and int(top.max()) - int(top.min()) <= 2 and 25 <= top.max() <= 90:
+                continue                                         # an empty canvas: flat UI grey (a black render is fine)
+            if x1 - x0 > w * 0.97 and y1 - y0 > h * 0.9: continue    # that's the whole window, toolbar and all
+            return x0, y0, x1, y1
+    box = _auto_trim_by_colour(full)
+    if box and box[2] - box[0] > w * 0.97 and box[3] - box[1] > h * 0.9: return None   # the whole window is never the render
+    return box
+
+def _auto_trim_by_colour(full):
     """The render sits inside the RenderView, letterboxed on UI grey, with a toolbar on top and a status line below.
     UI grey = the most common colour of the toolbar strip (a render with a black background fools edge sampling).
     -> (x0, y0, x1, y1) of the render, or None."""
@@ -188,6 +271,66 @@ def readout(rgb8):
         text += "   %s  sat %d%%" % (next(n for lim, n in HUE_NAMES if h < lim), round(c * 100))
     else: text += "   neutral"
     return text, zc
+
+# ---------------------------------------------------------------- 60/30/10 tonal balance
+def tone_shares(y, lo, hi):
+    """Share of the image (0..1 luma) in shadow / mid / light, split at the Light & Shadow levels."""
+    n = max(1, y.size); s = float((y < lo).sum()) / n; l = float((y >= hi).sum()) / n
+    return [s, max(0.0, 1 - s - l), l]
+
+# Balance targets as Shadow / Mid / Light shares. None = the classic rule in any order. The fixed ones were
+# measured on reference frames (Mindaugas POV set, 28 stills): hero endcards ~63/28/7, close-ups ~47/43/10,
+# action frames ~25/62/12, a spotlight shot 93/6/0; lights stayed a small accent (5-13 %) in every one.
+BALANCE_PRESETS = [("60/30/10 (any order)", None),
+                   ("Low-key 65/28/7", (0.65, 0.28, 0.07)),
+                   ("High contrast 75/20/5", (0.75, 0.20, 0.05)),
+                   ("Spotlight 85/12/3", (0.85, 0.12, 0.03)),
+                   ("Moody even 47/43/10", (0.47, 0.43, 0.10)),
+                   ("Mid-key 25/63/12", (0.25, 0.63, 0.12)),
+                   ("High-key 10/30/60", (0.10, 0.30, 0.60))]
+# what to change in the lighting when a tone is off target: (too much, too little)
+FIXES = [("open the shadows - more fill or bounce", "let more fall into shadow - cut the fill"),
+         ("push contrast - move mids into shadow or light", "soften - more fill, fewer hard edges"),
+         ("light is too big - narrow or dim the key", "add a rim, kicker or a hotter key")]
+
+def balance_verdict(sh, preset=0):
+    """Score the Shadow / Mid / Light split against a preset.
+    -> (score 0-100, key name, advice, target shares in S/M/L order)"""
+    rank = sorted(range(3), key=lambda i: -sh[i])
+    key = ("Low-key", "Mid-key", "High-key")[rank[0]]
+    tgt = BALANCE_PRESETS[max(0, min(preset, len(BALANCE_PRESETS) - 1))][1]
+    if tgt is None:                                               # classic: 60/30/10 in whatever order the image has
+        tgt = [0.0] * 3
+        for pos, i in enumerate(rank): tgt[i] = (0.6, 0.3, 0.1)[pos]
+    diff = [sh[i] - tgt[i] for i in range(3)]
+    score = max(0.0, 100 - sum(abs(v) for v in diff) * 100 / 1.2)
+    worst = max(range(3), key=lambda i: abs(diff[i]))
+    if sum(abs(v) for v in diff) <= 0.10: tip = "on target"
+    else: tip = "%s %+d%%: %s" % (TONES[worst][0].lower(), round(diff[worst] * 100), FIXES[worst][0 if diff[worst] > 0 else 1])
+    return score, key, tip, tgt
+
+BALANCE_H = 40                                                   # strip above the image that holds the meter
+
+def draw_balance(d, x, y, sh, ref_sh=None, maxw=10000, preset=0):
+    """Meter in a strip above the image: your split as a bar, the preset's target split under it,
+    the numbers and the verdict to its right."""
+    score, key, tip, target = balance_verdict(sh, preset)
+    col = (120, 200, 130) if tip == "on target" else (225, 180, 100)
+    bw = int(max(80, min(200, maxw * 0.3)))
+    def bar(yy, shares, h):
+        xx = x + 1
+        for i, v in enumerate(shares):
+            w = int(round(v * bw)); d.rectangle([xx, yy, xx + w, yy + h], fill=TONES[i][1]); xx += w
+    d.rectangle([x, y + 7, x + bw + 1, y + 20], outline=(70, 70, 76))
+    bar(y + 8, sh, 11); bar(y + 24, target, 3)                     # thin bar = where the preset puts the splits
+    tx = x + bw + 14
+    stats = "  ".join("%s %d%%" % (TONES[i][0], round(v * 100)) for i, v in enumerate(sh))
+    d.text((tx, y + 2), stats, fill=(225, 225, 228), font=FONT)
+    if ref_sh is not None:
+        d.text((tx + d.textlength(stats + "     ", font=FONT), y + 2),
+               "Reference  " + "  ".join("%d%%" % round(v * 100) for v in ref_sh), fill=REF_RGB, font=FONT)
+    name = BALANCE_PRESETS[max(0, min(preset, len(BALANCE_PRESETS) - 1))][0]
+    d.text((tx, y + 19), "%s  %d/100 vs %s  -  %s" % (key, score, name, tip), fill=col, font=FONT)
 
 # ---------------------------------------------------------------- service
 class Service:
@@ -307,6 +450,8 @@ class Service:
         elif c == "slot" and len(p) == 3 and p[2] in scopes.SCOPES: self.cfg["slots"][max(0, min(3, int(p[1])))] = p[2]
         elif c == "param" and len(p) == 3 and p[1] in DEFAULTS:
             self.cfg[p[1]] = type(DEFAULTS[p[1]])(float(p[2])); self.ref_cache = {}
+        elif c == "ui" and len(p) == 3 and p[1] in DEFAULTS["ui"]:
+            self.cfg.setdefault("ui", dict(DEFAULTS["ui"]))[p[1]] = type(DEFAULTS["ui"][p[1]])(int(float(p[2])))
         elif c == "quit": self.save(); raise SystemExit
         self.last_ping = time.time()
         if not quiet: self.save()
@@ -364,8 +509,14 @@ class Service:
 
     def crop_box(self, kind, full):
         """Render windows (RenderView / Octane LV): where the render sits inside the UI. Re-detected twice a second."""
-        c = self.crops.setdefault(kind, [None, 0.0])
-        if time.time() - c[1] > 0.5: c[0], c[1] = auto_trim_rv(full), time.time()
+        c = self.crops.setdefault(kind, [None, 0.0, None, 0.0])       # box, checked at, window size, last good at
+        if time.time() - c[1] > 0.5:
+            box, now = auto_trim_rv(full), time.time()
+            # one failed detection (a redraw, a status overlay) keeps the last good box while the window size holds,
+            # instead of flashing the whole RenderView UI into the analysis
+            if box is None and c[0] is not None and c[2] == full.shape[:2] and now - c[3] < 5: box = c[0]
+            elif box is not None: c[3] = now
+            c[0], c[1], c[2] = box, now, full.shape[:2]
         return c[0]
 
     def grab_kind(self, kind):
@@ -433,11 +584,15 @@ class Service:
         h, w = raw.shape[:2]
         ref_on = self.ref is not None and self.show_ref
         cw = W // 2 - 2 if ref_on else W
+        m = self.cfg["mode"]
+        meter = bool(self.cfg.get("balance", 1)) and m < len(self.names) and self.names[m][0] in BALANCE_VIEWS
+        top = BALANCE_H if meter and VH > BALANCE_H * 3 else 0      # the meter gets its own strip, off the image
+        VH = VH - top                                               # images fit below it
         s = min(cw / w, VH / h, 1.0)
         small = np.asarray(Image.fromarray(raw).resize((max(1, int(w * s)), max(1, int(h * s))), Image.BILINEAR, reducing_gap=2.0))
         self.src_small = small
         view = Image.fromarray(self.process(small))
-        vx, vy = (cw - view.width) // 2, (VH - view.height) // 2
+        vx, vy = (cw - view.width) // 2, top + (VH - view.height) // 2
         out.paste(view, (vx, vy)); self.view_rect = (vx, vy, view.width, view.height)
         refss = None
         if self.ref is not None:
@@ -449,9 +604,16 @@ class Service:
             refss, rimg = self.ref_cache[key]
             if ref_on:
                 rx = W - cw + (cw - rimg.width) // 2
-                out.paste(rimg, (rx, (VH - rimg.height) // 2))
+                ry = top + (VH - rimg.height) // 2
+                out.paste(rimg, (rx, ry))
                 d.text((vx + 6, vy + 4), "Yours", fill=(220, 220, 224), font=FONT_S)
-                d.text((rx + 6, (VH - rimg.height) // 2 + 4), "Reference", fill=REF_RGB, font=FONT_S)
+                d.text((rx + 6, ry + 4), "Reference", fill=REF_RGB, font=FONT_S)
+        if top:
+            lo, hi = self.cfg["notan_lo"], self.cfg["notan_hi"]
+            sh = tone_shares(luma(small[::2, ::2].astype(np.float32) / 255), lo, hi)
+            ref_sh = tone_shares(luma(refss), lo, hi) if refss is not None and ref_on else None
+            draw_balance(d, max(6, vx), 2, sh, ref_sh, W, int(self.cfg.get("balance_preset", 0)))
+        VH += top                                                   # scopes start below the whole view area
         self.draw_probes(d, small, view, vx, vy, W, VH)
         n = self.cfg["scope_count"]
         if SH > 0 and n > 0:
@@ -515,7 +677,8 @@ class Service:
                          flags, float(self.fps), *[int(v) for v in self.view_rect], len(self.modes))
         meta = json.dumps({"names": self.names, "msg": self.msg, "pins": len(self.cfg["pins"]), "split": self.size[1],
                            "scope_count": self.cfg["scope_count"], "slots": self.cfg["slots"], "scopes": scopes.SCOPES,
-                           "params": {k: self.cfg[k] for k in ("notan_lo", "notan_hi", "accent", "exposure", "max_fps", "scope_gain", "vec_zoom")},
+                           "params": {k: self.cfg[k] for k in ("notan_lo", "notan_hi", "accent", "exposure", "max_fps", "scope_gain", "vec_zoom", "balance", "balance_preset")},
+                           "ui": self.cfg.get("ui", DEFAULTS["ui"]),
                            "trim": self.resolved in self.cfg["trim"]}).encode("utf-8")[: HDR - 128]
         self.shm[128:128 + len(meta) + 1] = meta + b"\0"
         self.shm[HDR:HDR + a.nbytes] = a.tobytes()

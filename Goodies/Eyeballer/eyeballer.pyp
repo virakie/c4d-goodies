@@ -55,13 +55,18 @@ M_SRC0 = 2000                                          # 2000..2004
 M_TRIM, M_TRIMRESET, M_IPR = 2010, 2011, 2012
 M_REFPASTE, M_REFLOAD, M_REFSHOW, M_REFCLEAR = 2020, 2021, 2022, 2023
 M_PINSCLEAR = 2030
-M_ADJ, M_ADJRESET = 2040, 2041
+M_ADJ, M_ADJRESET, M_BALANCE = 2040, 2041, 2042
+M_PRESET0 = 2090                                       # 2090.. balance targets, same order as the service's list
+BALANCE_PRESETS = ["60/30/10 (any order)", "Low-key 65/28/7", "High contrast 75/20/5", "Spotlight 85/12/3",
+                   "Moody even 47/43/10", "Mid-key 25/63/12", "High-key 10/30/60"]
 M_HEIGHT0, M_FPS10, M_FPS20, M_FPS30 = 2050, 2060, 2061, 2062
-M_LEGEND, M_HOWTO = 2070, 2071
+M_LEGEND, M_HOWTO, M_LOG = 2070, 2071, 2072
 M_UNDO, M_REDO = 2080, 2081
 
 _sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 _proc, _last_start = None, 0.0
+_svc_error = ""      # why the engine is not running, shown in the view until a frame arrives
+LOG = os.path.join(os.environ.get("APPDATA", HERE), "Eyeballer", "service.log")
 
 
 _local = {}          # settings sent but not yet confirmed by a frame: key -> (value, time)
@@ -80,16 +85,37 @@ def send(cmd):
 
 def ensure_service():
     """Start eyeballer_service.pyw unless it is running (it exits on its own 10 s after the last ping)."""
-    global _proc, _last_start
-    if _proc is not None and _proc.poll() is None: return True
+    global _proc, _last_start, _svc_error
+    if _proc is not None:
+        code = _proc.poll()
+        if code is None: return True
+        if code != 0: _svc_error = "The engine stopped (exit code %d): %s" % (code, last_log_line())
+        _proc = None
     if time.time() - _last_start < 3: return True
+    if not PYTHONW:
+        _svc_error = "Python 3 not found. Install it, then: pip install numpy pillow pywin32 (or set EYEBALLER_PYTHON)"
+    elif not os.path.exists(SERVICE):
+        _svc_error = "Engine files missing: " + SERVICE
     if not (PYTHONW and os.path.exists(SERVICE)):
-        msg = "Eyeballer needs Python 3 with numpy, pillow and pywin32 (pip install numpy pillow pywin32)"
-        print("[Eyeballer]", msg, "- python:", PYTHONW or "not found", "- service:", SERVICE)
-        c4d.StatusSetText(msg); return False
+        print("[Eyeballer]", _svc_error); c4d.StatusSetText("Eyeballer: " + _svc_error); return False
     _last_start = time.time()
-    _proc = subprocess.Popen([PYTHONW, SERVICE, "--service"], cwd=os.path.dirname(SERVICE), creationflags=0x08000000)
+    try:
+        os.makedirs(os.path.dirname(LOG), exist_ok=True)
+        log = open(LOG, "w")
+    except OSError: log = subprocess.DEVNULL
+    # exit code 0 = normal (idle timeout, or another engine already owns the port); anything else is a crash
+    _proc = subprocess.Popen([PYTHONW, SERVICE, "--service"], cwd=os.path.dirname(SERVICE), creationflags=0x08000000,
+                             stdout=log, stderr=subprocess.STDOUT)
+    if log is not subprocess.DEVNULL: log.close()
     return True
+
+
+def last_log_line():
+    """The error at the end of the engine log (a traceback's last line names the problem)."""
+    try:
+        lines = [l.strip() for l in open(LOG, encoding="utf-8", errors="replace") if l.strip()]
+        return lines[-1][:200] if lines else "no output"
+    except OSError: return "no log"
 
 
 def local_mouse(ua):
@@ -162,7 +188,7 @@ class ImageArea(gui.GeUserArea):
             return
         if not self.is_view: return
         state = info["state"] if info else -1
-        lines = {-1: ("Starting...", ""),
+        lines = {-1: ("Eyeballer engine failed to start", _svc_error + "   (Help > Open engine log)") if _svc_error else ("Starting...", ""),
                  STATE_NO_VIEWPORT: ("No viewport found", "Switch Source to RenderView, or show a viewport in this layout."),
                  STATE_NO_RV: ("Nothing in the RenderView yet", "Start a Redshift IPR (Source > Start Redshift IPR), or switch Source to Viewport."),
                  STATE_NO_AREA: ("No screen area picked", "Source > Screen area... and drag over the part of the screen to analyse."),
@@ -211,6 +237,8 @@ class Panel(gui.GeDialog):
         self.last_size = None
         self.shown = {}
         self.history, self.future, self._undo_tag, self._undo_t = [], [], None, 0.0
+        self.last_frame_t = 0.0
+        self.ui_loaded = False       # scope height + adjustments come from the service's saved settings once
 
     # ---- layout
     def CreateLayout(self):
@@ -219,6 +247,7 @@ class Panel(gui.GeDialog):
         # widgets showed, or sync() thinks the fresh ones are already filled in.
         self.names, self.shown = [], {}
         self.scope_count, self.last_size, self.adj_open = -1, None, False
+        self.ui_loaded = False
         self.MenuFlushAll()
         self.MenuSubBegin("Edit")
         self.MenuAddString(M_UNDO, "Undo  (Ctrl+Z)")
@@ -241,6 +270,10 @@ class Panel(gui.GeDialog):
         self.MenuSubEnd()
         self.MenuSubBegin("Options")
         self.MenuAddString(M_ADJ, "Adjustments")
+        self.MenuAddString(M_BALANCE, "Tonal balance meter")
+        self.MenuSubBegin("Balance target")
+        for i, n in enumerate(BALANCE_PRESETS): self.MenuAddString(M_PRESET0 + i, n)
+        self.MenuSubEnd()
         self.MenuAddString(M_PINSCLEAR, "Clear probes")
         self.MenuAddSeparator()
         self.MenuSubBegin("Scope height")
@@ -255,6 +288,8 @@ class Panel(gui.GeDialog):
         self.MenuSubBegin("Help")
         self.MenuAddString(M_HOWTO, "How to use...")
         self.MenuAddString(M_LEGEND, "Field guide...")
+        self.MenuAddSeparator()
+        self.MenuAddString(M_LOG, "Open engine log")
         self.MenuSubEnd()
         self.MenuFinished()
 
@@ -360,6 +395,12 @@ class Panel(gui.GeDialog):
             if self.shown.get(key) == value: return False
             self.shown[key] = value; return True
         self.update_names([tuple(n) for n in info.get("names", [])])
+        if not self.ui_loaded:                                   # restore the saved layout once per layout build
+            ui = info.get("ui", {}); self.ui_loaded = True
+            self.height_idx = max(0, min(len(SCOPE_HEIGHTS) - 1, int(ui.get("height_idx", self.height_idx))))
+            if bool(ui.get("adj_open", False)) != self.adj_open:
+                self.adj_open = not self.adj_open; self.build_adjustments(info.get("params", {}))
+            self.scope_count = -1                                # rebuild below at the saved height
         if changed("source", info["source"]): self.SetInt32(CB_SOURCE, SOURCES.index(info["source"]))
         if changed("mode", info["mode"]): self.SetInt32(CB_VIEW, info["mode"])
         if changed("hint", info["mode"]) or changed("names_n", len(self.names)):
@@ -385,6 +426,8 @@ class Panel(gui.GeDialog):
         self.MenuInitString(M_REFSHOW, info["ref"], info["ref"] and info["ref_shown"])
         self.MenuInitString(M_REFCLEAR, info["ref"], False)
         self.MenuInitString(M_ADJ, True, self.adj_open)
+        self.MenuInitString(M_BALANCE, True, bool(p.get("balance", 1)))
+        for i in range(len(BALANCE_PRESETS)): self.MenuInitString(M_PRESET0 + i, True, int(p.get("balance_preset", 0)) == i)
         self.MenuInitString(M_UNDO, bool(self.history), False)
         self.MenuInitString(M_REDO, bool(self.future), False)
         for i in range(len(SCOPE_HEIGHTS)): self.MenuInitString(M_HEIGHT0 + i, True, i == self.height_idx)
@@ -425,6 +468,7 @@ class Panel(gui.GeDialog):
         for k, v in s["params"].items():
             if cur["params"].get(k) != v: send("param %s %f" % (k, v))
         if s["ref_shown"] != cur["ref_shown"]: send("ref show" if s["ref_shown"] else "ref hide")
+        if s["height_idx"] != self.height_idx: send("ui height_idx %d" % s["height_idx"])
         self.height_idx = s["height_idx"]
         self.SetInt32(CB_SOURCE, SOURCES.index(s["source"])); self.SetInt32(CB_VIEW, s["mode"])
         self.build_scopes(s["scope_count"], s["slots"])
@@ -451,9 +495,10 @@ class Panel(gui.GeDialog):
 
     def Command(self, id, msg):
         undoable = {CB_SOURCE: "source", CB_VIEW: "mode", CK_REF: "ref", CB_SCOPECOUNT: "scopes", CB_VECZOOM: "veczoom",
-                    M_REFSHOW: "ref", M_ADJRESET: "adjreset", M_FPS10: "fps", M_FPS20: "fps", M_FPS30: "fps"}
+                    M_REFSHOW: "ref", M_ADJRESET: "adjreset", M_BALANCE: "balance", M_FPS10: "fps", M_FPS20: "fps", M_FPS30: "fps"}
         if id in undoable: self.record(undoable[id])
         elif id in SL: self.record("param%d" % id)
+        elif M_PRESET0 <= id < M_PRESET0 + len(BALANCE_PRESETS): self.record("preset")
         elif CB_SLOT0 <= id < CB_SLOT0 + 4 or M_SRC0 <= id < M_SRC0 + len(SOURCES) or M_HEIGHT0 <= id < M_HEIGHT0 + len(SCOPE_HEIGHTS):
             self.record("layout%d" % id)
         if id == M_UNDO: self.undo(); return True
@@ -482,17 +527,25 @@ class Panel(gui.GeDialog):
         elif id == M_REFSHOW: send("ref toggle")
         elif id == M_REFCLEAR: send("ref clear")
         elif id == M_PINSCLEAR: send("pins clear")
-        elif id == M_ADJ: self.adj_open = not self.adj_open; self.build_adjustments()
+        elif id == M_ADJ:
+            self.adj_open = not self.adj_open; self.build_adjustments(); send("ui adj_open %d" % self.adj_open)
+        elif id == M_BALANCE:
+            send("param balance %d" % (0 if (self.info or {}).get("params", {}).get("balance", 1) else 1))
         elif id == M_ADJRESET:
             for gid, (key, label, default) in SL.items(): send("param %s %f" % (key, default))
             send("param vec_zoom 1")
             if self.adj_open: self.build_adjustments()
+        elif M_PRESET0 <= id < M_PRESET0 + len(BALANCE_PRESETS):
+            send("param balance_preset %d" % (id - M_PRESET0)); send("param balance 1")
         elif M_HEIGHT0 <= id < M_HEIGHT0 + len(SCOPE_HEIGHTS):
-            self.height_idx = id - M_HEIGHT0
+            self.height_idx = id - M_HEIGHT0; send("ui height_idx %d" % self.height_idx)
             self.build_scopes(self.scope_count, (self.info or {}).get("slots", SCOPES))
         elif id in (M_FPS10, M_FPS20, M_FPS30): send("param max_fps %d" % {M_FPS10: 10, M_FPS20: 20, M_FPS30: 30}[id])
         elif id == M_LEGEND:
             if os.path.exists(GUIDE): c4d.storage.GeExecuteFile(GUIDE)
+        elif id == M_LOG:
+            if os.path.exists(LOG): c4d.storage.GeExecuteFile(LOG)
+            else: gui.MessageDialog("No engine log yet:\n" + LOG)
         elif id == M_HOWTO:
             gui.MessageDialog("Eyeballer\n\n"
                               "Source: what to analyse - Auto follows the Redshift RenderView or Octane Live Viewer while it shows a render, else the viewport.\n"
@@ -504,13 +557,19 @@ class Panel(gui.GeDialog):
         return True
 
     def Timer(self, msg):
+        global _svc_error
         now = time.time()
         if now - self.last_ping > 1.0:
             ensure_service(); send("ping"); self.send_bg(); self.last_size = None; self.send_size(); self.last_ping = now
         self.view.poll_hover()
         if not self.frame: return
         f = self.frame.read()
-        if not f: return
+        if not f:
+            # engine died after running: drop the frozen last frame and show why
+            if _svc_error and self.info is not None and now - self.last_frame_t > 3:
+                self.info = None; self.view.Redraw()
+            return
+        _svc_error = ""; self.last_frame_t = now
         w, h, px, info = f
         old = self.info; self.info = info
         self.sync(info)
